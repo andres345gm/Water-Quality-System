@@ -1,0 +1,41 @@
+import zmq
+import time
+import sys
+
+LIMIT_VALUES_TEMPERATURE = [68, 89]
+LIMIT_VALUES_PH = [6.0, 8.0]
+LIMIT_VALUES_OXYGEN = [2.0, 11.0]
+
+
+class Sensor:
+    def __init__(self, topic, ip, port):
+        self.topic = topic
+        self.context = zmq.Context()
+        self.publisher = self.context.socket(zmq.PUB)
+        self.publisher.connect(f"tcp://{ip}:{port}")
+        print(topic + " sensor running...")
+
+    def send(self, message):
+        try:
+            self.publisher.send_multipart([self.topic.encode("UTF-8"), message.encode("UTF-8")])
+            print("Message sent:", message)
+        except Exception as e:
+            print("An error occurred:", str(e))
+
+
+def validate_arguments:
+    #The expected arguments are: topic, t, file
+    #An example of the input is python3 Sensor.py -t temperature -v 68.89 -f temperature.txt
+    if (sys.argv != 5):
+        print("The expected arguments are: topic, t, file")
+        print("An example of the input is python3 Sensor.py -t temperature -v 68.89 -f temperature.txt")
+        sys.exit(1)
+
+sensor = Sensor("ph", "127.0.0.1", "6666")
+try:
+    while True:
+        sensor.send("Danger: pH is too low")
+        time.sleep(5)
+except KeyboardInterrupt:
+    sensor.publisher.close()
+    sensor.context.term()
