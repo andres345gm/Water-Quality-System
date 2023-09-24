@@ -19,6 +19,7 @@ class Sensor:
             print("An error occurred:", str(e))
 
 
+"""
 def validate_arguments:
     #The expected arguments are: topic, t, file
     #An example of the input is python3 Sensor.py -t temperature -v 68.89 -f temperature.txt
@@ -26,6 +27,7 @@ def validate_arguments:
         print("The expected arguments are: topic, t, file")
         print("An example of the input is python3 Sensor.py -t temperature -v 68.89 -f temperature.txt")
         sys.exit(1)
+"""
 
 
 sensor = Sensor("ph", "127.0.0.1", "6666")
