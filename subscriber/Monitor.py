@@ -1,5 +1,9 @@
 import zmq
 
+LIMIT_VALUES_TEMPERATURE = [68, 89]
+LIMIT_VALUES_PH = [6.0, 8.0]
+LIMIT_VALUES_OXYGEN = [2.0, 11.0]
+
 
 class Monitor:
     def __init__(self, topic, ip, port):

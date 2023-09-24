@@ -2,10 +2,6 @@ import zmq
 import time
 import sys
 
-LIMIT_VALUES_TEMPERATURE = [68, 89]
-LIMIT_VALUES_PH = [6.0, 8.0]
-LIMIT_VALUES_OXYGEN = [2.0, 11.0]
-
 
 class Sensor:
     def __init__(self, topic, ip, port):
@@ -26,10 +22,11 @@ class Sensor:
 def validate_arguments:
     #The expected arguments are: topic, t, file
     #An example of the input is python3 Sensor.py -t temperature -v 68.89 -f temperature.txt
-    if (sys.argv != 5):
+    if sys.argv != 5:
         print("The expected arguments are: topic, t, file")
         print("An example of the input is python3 Sensor.py -t temperature -v 68.89 -f temperature.txt")
         sys.exit(1)
+
 
 sensor = Sensor("ph", "127.0.0.1", "6666")
 try:
