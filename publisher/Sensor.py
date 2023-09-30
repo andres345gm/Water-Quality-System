@@ -33,7 +33,7 @@ def validate_arguments:
 sensor = Sensor("ph", "127.0.0.1", "6666")
 try:
     while True:
-        sensor.send("Danger: pH is too low")
+        sensor.send("9.0")
         time.sleep(5)
 except KeyboardInterrupt:
     sensor.publisher.close()
