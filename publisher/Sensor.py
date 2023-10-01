@@ -41,7 +41,7 @@ class Sensor:
 
         # Print a message indicating the sensor is running
         print("The" + self.sensor + " sensor running...")
-    #end def
+    # end def
 
     # Method: Generate random value
     def generate_random_value(self):
