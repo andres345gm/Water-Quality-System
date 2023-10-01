@@ -15,12 +15,12 @@ class Proxy:
             zmq.proxy(self.frontend, self.backend)
         except Exception as e:
             print("An error occurred:", str(e))
-        finally:
-            # Clean up sockets and context when done
-            self.frontend.close()
-            self.backend.close()
-            self.context.term()
 
 
 proxy = Proxy("6666", "5555")
-proxy.run()
+try:
+    proxy.run()
+except KeyboardInterrupt:
+    proxy.frontend.close()
+    proxy.backend.close()
+    proxy.context.term()
