@@ -109,6 +109,7 @@ def create_sensor(args):
             data = json.load(file)
             # MISSING
             # Verify that 'correct', 'out_of_range', and 'error' are present in the JSON
+            # Verify: Sum probabilities = 1
             sensor = Sensor(args.sensor, args.interval, data)
             return sensor
         # end with
