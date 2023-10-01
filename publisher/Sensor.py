@@ -82,6 +82,7 @@ def create_sensor(args):
     try:
         with open(args.config, 'r') as file:
             data = json.load(file)
+            # MISSING
             # Verify that 'correct', 'out_of_range', and 'error' are present in the JSON
             sensor = Sensor(args.sensor, args.interval, data)
             return sensor
