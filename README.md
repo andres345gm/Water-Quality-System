@@ -1,3 +1,8 @@
+# Water Quality System
+## Proyecto de Sistemas Distribuidos
+
+![Black And White Modern Vintage Retro Brand Logo (1)](https://github.com/andres345gm/Water-Quality-System/assets/103542486/42b3c692-d20f-4703-a11a-48931cbbc547)
+
 
 ### Descripción del Proyecto
 El proyecto consta de varios programas diseñados para simular un sistema de monitoreo de sensores y un sistema de calidad. Los sensores generan datos simulados y los envían al sistema de calidad para su control. Los programas incluyen:
@@ -67,3 +72,9 @@ El orden de ejecución es crucial para el funcionamiento del proyecto debido a l
 4. **Sensor.py:** Los sensores generan datos simulados y los envían al sistema de calidad a través del proxy. Deben ejecutarse después de que el sistema de calidad y el proxy estén en funcionamiento.
 
 Siguiendo este orden, aseguramos que todos los componentes estén en su lugar y listos para interactuar de manera efectiva.
+
+# Authors 
+[@Alejandro Uscátegui](https://github.com/Uscateguito)<br>
+Fabito
+Andrés
+Luisa
