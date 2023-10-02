@@ -1,81 +1,115 @@
-import sys
-
+import argparse
 import zmq
 
-LIMIT_VALUES_TEMPERATURE = [68, 89]
-LIMIT_VALUES_PH = [6.0, 8.0]
-LIMIT_VALUES_OXYGEN = [2.0, 11.0]
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Global Values
+
+LIMIT_VALUES = {
+    'temperature': (68, 89),
+    'PH': (6.0, 8.0),
+    'oxygen': (2.0, 11.0)
+}
+
+IP_ADDRESS_PROXY = "127.0.0.1"
+PORT_PROXY = "5555"
+
+IP_ADDRESS_QUALITY_SYSTEM = "127.0.0.1"
+PORT_QUALITY_SYSTEM = "7777"
+
+# end Global Values
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
+# Monitor
 class Monitor:
-    def __init__(self, topic, ip_sub, port_sub, ip_pub, port_pub):
+
+    # Method: Constructor
+    def __init__(self, topic):
+        # Initialize ZeroMQ context and subscriber socket
         self.context = zmq.Context()
         self.subscriber = self.context.socket(zmq.SUB)
         self.topic = topic
-        self.subscriber.connect(f"tcp://{ip_sub}:{port_sub}")
+        self.subscriber.connect(f"tcp://{IP_ADDRESS_PROXY}:{PORT_PROXY}")
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, topic)
+        # Initialize publisher socket
         self.publisher = self.context.socket(zmq.PUB)
-        self.publisher.connect(f"tcp://{ip_pub}:{port_pub}")
+        self.publisher.connect(f"tcp://{IP_ADDRESS_QUALITY_SYSTEM}:{PORT_QUALITY_SYSTEM}")
         print(topic + " monitor running...")
 
+    # end def
+
+    # Method: Receive
     def receive(self):
+        # While the program is running, receive messages
         while True:
             message = self.subscriber.recv_multipart()
             received_value = message[1].decode()
-            print("Message received:", received_value)
-            self.check_value(received_value)
+            time_stamp = message[2].decode()
+            print(time_stamp, ": ", received_value)
+            # Check if the received value is within the limits
+            self.check_value(received_value, time_stamp)
 
+        # end while
+
+    # end def
+
+    # Method: Send alarm
     def send_alarm(self, message):
+        # Send the alarm message to the quality system
         try:
             self.publisher.send_string(str(message))
-            print("Message sent:", message)
         except Exception as e:
             print("An error occurred:", str(e))
+        # end try
 
-    def check_value(self, received_message):
-        if self.topic == "temperature":
-            if float(received_message) < LIMIT_VALUES_TEMPERATURE[0]:
-                self.send_alarm("ALARM! Temperature is too low, the current temperature is: " + received_message + "°F")
-            elif float(received_message) > LIMIT_VALUES_TEMPERATURE[1]:
-                self.send_alarm("ALARM! Temperature is too high, the current temperature is: " + received_message + "ºF")
-        elif self.topic == "ph":
-            if float(received_message) < LIMIT_VALUES_PH[0]:
-                self.send_alarm("ALARM! pH is too low, the current pH is: " + received_message)
-            elif float(received_message) > LIMIT_VALUES_PH[1]:
-                self.send_alarm("ALARM! pH is too high, the current pH is: " + received_message)
-        elif self.topic == "oxygen":
-            if float(received_message) < LIMIT_VALUES_OXYGEN[0]:
-                self.send_alarm("ALARM! Oxygen is too low, the current oxygen is: " + received_message)
-            elif float(received_message) > LIMIT_VALUES_OXYGEN[1]:
-                self.send_alarm("ALARM! Oxygen is too high, the current oxygen is: " + received_message)
+    # end def
+
+    # Method: Check value
+    def check_value(self, received_value, time_stamp):
+        # Check if the received value is within the limits
+        if LIMIT_VALUES[self.topic][0] > float(received_value):
+            self.send_alarm(time_stamp + ": " + self.topic + " is too low, the current " + self.topic + " is: " + received_value)
+        elif LIMIT_VALUES[self.topic][1] < float(received_value):
+            self.send_alarm(time_stamp + ": " + self.topic + " is too high, the current " + self.topic + " is: " + received_value)
+
+    # end if
+
+# end class
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
+# Method: Validate arguments
 def validate_arguments():
-    # The expected arguments are: -t topic
-    # An example of the input is: python3 Sensor.py -t topic
-    if len(sys.argv) != 3:
-        arguments_message()
-        sys.exit(1)
+    # Create an argument parser
+    parser = argparse.ArgumentParser(description="Sensor Argument Validator")
+    # Define the arguments
+    parser.add_argument("-t", "--type", required=True, choices=["temperature", "ph", "oxygen"],
+                        help="Monitor type (temperature, ph, or oxygen)")
 
-    if sys.argv[1] != "-t":
-        arguments_message()
-        sys.exit(1)
+    args = parser.parse_args()
+    return args
 
-    if sys.argv[2] != "temperature" and sys.argv[2] != "ph" and sys.argv[2] != "oxygen":
-        arguments_message()
-        sys.exit(1)
+# end def
 
 
-def arguments_message():
-    print("The expected arguments are: -t topic")
-    print("The topic must be temperature, ph or oxygen")
-    print("An example of the input is python3 Sensor.py -t temperature")
+# Method: Main
+def main():
+    # Validate the arguments
+    args = validate_arguments()
+    # Create a monitor object and receive messages
+    monitor = Monitor(args.type)
+    try:
+        monitor.receive()
+    except KeyboardInterrupt:
+        monitor.subscriber.close()
+        monitor.context.term()
+    # end try
+
+# end def
 
 
-validate_arguments()
-monitor = Monitor("ph", "127.0.0.1", "5555", "127.0.0.1", "7777")
-try:
-    monitor.receive()
-except KeyboardInterrupt:
-    monitor.subscriber.close()
-    monitor.context.term()
+if __name__ == "__main__":
+    main()
