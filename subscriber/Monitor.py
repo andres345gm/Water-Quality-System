@@ -1,15 +1,13 @@
 import argparse
+from datetime import datetime
+
 import zmq
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Global Values
 
-LIMIT_VALUES = {
-    'temperature': (68, 89),
-    'PH': (6.0, 8.0),
-    'oxygen': (2.0, 11.0)
-}
+LIMIT_VALUES = {"temperature": (68, 89), "PH": (6.0, 8.0), "oxygen": (2.0, 11.0)}
 
 IP_ADDRESS_PROXY = "127.0.0.1"
 PORT_PROXY = "5555"
@@ -20,6 +18,18 @@ PORT_QUALITY_SYSTEM = "7777"
 # end Global Values
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+
+# Function: Performance Test
+def performance_test(time_stamp):
+    source_message_time = datetime.strptime(time_stamp, "%Y-%m-%d %H:%M:%S")
+    current_time = datetime.now()
+    time_delta = current_time - source_message_time
+    print(f"The time from occurrence to storage of the measurement is: {time_delta}")
+
+
+# end def
+
 
 # Monitor
 class Monitor:
@@ -34,7 +44,9 @@ class Monitor:
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, topic)
         # Initialize publisher socket
         self.publisher = self.context.socket(zmq.PUB)
-        self.publisher.connect(f"tcp://{IP_ADDRESS_QUALITY_SYSTEM}:{PORT_QUALITY_SYSTEM}")
+        self.publisher.connect(
+            f"tcp://{IP_ADDRESS_QUALITY_SYSTEM}:{PORT_QUALITY_SYSTEM}"
+        )
         print(topic + " monitor running...")
 
     # end def
@@ -49,10 +61,13 @@ class Monitor:
             print(time_stamp, ": ", received_value)
             # Check if the received value is within the limits
             self.check_value(received_value, time_stamp)
+            performance_test(time_stamp)
 
         # end while
 
     # end def
+
+    # Method: Quality control
 
     # Method: Send alarm
     def send_alarm(self, message):
@@ -68,12 +83,37 @@ class Monitor:
     # Method: Check value
     def check_value(self, received_value, time_stamp):
         # Check if the received value is within the limits
-        if LIMIT_VALUES[self.topic][0] > float(received_value):
-            self.send_alarm(time_stamp + ": " + self.topic + " is too low, the current " + self.topic + " is: " + received_value)
+        if float(received_value) < 0:
+            self.send_alarm(
+                time_stamp
+                + ": "
+                + self.topic
+                + " was an error with value: "
+                + received_value
+            )
+        elif LIMIT_VALUES[self.topic][0] > float(received_value):
+            self.send_alarm(
+                time_stamp
+                + ": "
+                + self.topic
+                + " is too low, the current "
+                + self.topic
+                + " is: "
+                + received_value
+            )
         elif LIMIT_VALUES[self.topic][1] < float(received_value):
-            self.send_alarm(time_stamp + ": " + self.topic + " is too high, the current " + self.topic + " is: " + received_value)
+            self.send_alarm(
+                time_stamp
+                + ": "
+                + self.topic
+                + " is too high, the current "
+                + self.topic
+                + " is: "
+                + received_value
+            )
 
     # end if
+
 
 # end class
 
@@ -85,11 +125,17 @@ def validate_arguments():
     # Create an argument parser
     parser = argparse.ArgumentParser(description="Sensor Argument Validator")
     # Define the arguments
-    parser.add_argument("-t", "--type", required=True, choices=["temperature", "PH", "oxygen"],
-                        help="Monitor type (temperature, ph, or oxygen)")
+    parser.add_argument(
+        "-t",
+        "--type",
+        required=True,
+        choices=["temperature", "PH", "oxygen"],
+        help="Monitor type (temperature, ph, or oxygen)",
+    )
 
     args = parser.parse_args()
     return args
+
 
 # end def
 
@@ -106,6 +152,7 @@ def main():
         monitor.subscriber.close()
         monitor.context.term()
     # end try
+
 
 # end def
 
