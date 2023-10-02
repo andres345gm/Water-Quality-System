@@ -21,7 +21,6 @@ PORT_QUALITY_SYSTEM = "7777"
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-
 # Monitor
 class Monitor:
 
@@ -86,7 +85,7 @@ def validate_arguments():
     # Create an argument parser
     parser = argparse.ArgumentParser(description="Sensor Argument Validator")
     # Define the arguments
-    parser.add_argument("-t", "--type", required=True, choices=["temperature", "ph", "oxygen"],
+    parser.add_argument("-t", "--type", required=True, choices=["temperature", "PH", "oxygen"],
                         help="Monitor type (temperature, ph, or oxygen)")
 
     args = parser.parse_args()

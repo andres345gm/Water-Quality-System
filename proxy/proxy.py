@@ -4,8 +4,8 @@ import zmq
 
 # Global Values
 
-PORT_FRONTEND = "5555"
-PORT_BACKEND = "6666"
+PORT_FRONTEND = "6666"
+PORT_BACKEND = "5555"
 
 # end Global Values
 
