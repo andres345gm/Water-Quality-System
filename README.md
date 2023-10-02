@@ -75,6 +75,6 @@ Siguiendo este orden, aseguramos que todos los componentes estén en su lugar y 
 
 # Authors 
 [@Alejandro Uscátegui](https://github.com/Uscateguito)<br>
-Fabito
-Andrés
-Luisa
+Fabito<br>
+Andrés<br>
+Luisa<br>
