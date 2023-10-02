@@ -19,6 +19,8 @@ Para ejecutar este proyecto, debe asegurarse de tener instaladas las siguientes 
 pip install zmq argparse
 ```
 
+El programa además utiliza otras librerías, pero son STD, por lo tanto, no son indicadas en esta instancia.
+
 ### Instrucciones de Ejecución en Orden
 
 El proyecto debe ejecutarse en el siguiente orden para que funcione correctamente debido a la interdependencia entre los programas:
