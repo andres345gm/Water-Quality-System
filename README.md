@@ -74,7 +74,7 @@ El orden de ejecución es crucial para el funcionamiento del proyecto debido a l
 Siguiendo este orden, aseguramos que todos los componentes estén en su lugar y listos para interactuar de manera efectiva.
 
 # Authors 
+[@Fabio Buitrago](https://github.com/FabioB8a)<br>
+[@Andrés García](https://github.com/andres345gm)<br>
+[@Luisa Parra](https://github.com/parraluisa)<br>
 [@Alejandro Uscátegui](https://github.com/Uscateguito)<br>
-Fabito<br>
-Andrés<br>
-Luisa<br>
