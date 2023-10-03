@@ -84,14 +84,9 @@ class Monitor:
     def check_value(self, received_value, time_stamp):
         # Check if the received value is within the limits
         if float(received_value) < 0:
-            self.send_alarm(
-                time_stamp
-                + ": "
-                + self.topic
-                + " was an error with value: "
-                + received_value
-            )
-        elif LIMIT_VALUES[self.topic][0] > float(received_value):
+            return
+
+        if LIMIT_VALUES[self.topic][0] > float(received_value):
             self.send_alarm(
                 time_stamp
                 + ": "
