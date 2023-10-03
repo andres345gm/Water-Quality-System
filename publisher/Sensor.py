@@ -58,9 +58,9 @@ class Sensor:
         if x == 1:
             return str(random.uniform(LIMIT_VALUES[self.topic][0], LIMIT_VALUES[self.topic][1]))
         elif x == 2:
-            return str(random.uniform(0, 68) if random.random() < 0.5 else random.uniform(90, 100))
+            return str(random.uniform(0, LIMIT_VALUES[self.topic][0]-1) if random.random() < 0.5 else random.uniform(LIMIT_VALUES[self.topic][1]+1, 100))
         elif x == 3:
-            return str(-1)
+            return str(-1 * random.uniform(LIMIT_VALUES[self.topic][0], LIMIT_VALUES[self.topic][1]))
         # end if
 
     # end def
