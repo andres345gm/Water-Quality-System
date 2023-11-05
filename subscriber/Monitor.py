@@ -3,6 +3,8 @@ from datetime import datetime
 
 import zmq
 
+from MeasureService import MeasureService
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Global Values
@@ -14,6 +16,7 @@ PORT_PROXY = "5555"
 
 IP_ADDRESS_QUALITY_SYSTEM = "127.0.0.1"
 PORT_QUALITY_SYSTEM = "7777"
+
 
 # end Global Values
 
@@ -47,6 +50,7 @@ class Monitor:
         self.publisher.connect(
             f"tcp://{IP_ADDRESS_QUALITY_SYSTEM}:{PORT_QUALITY_SYSTEM}"
         )
+        self.measure_service = MeasureService()
         print(topic + " monitor running...")
 
     # end def
@@ -61,7 +65,7 @@ class Monitor:
             print(time_stamp, ": ", received_value)
             # Check if the received value is within the limits
             self.check_value(received_value, time_stamp)
-            performance_test(time_stamp)
+            # performance_test(time_stamp)
 
         # end while
 
@@ -86,6 +90,8 @@ class Monitor:
         if float(received_value) < 0:
             return
 
+        self.measure_service.insert_measure(self.create_measure_json(received_value, time_stamp))
+
         if LIMIT_VALUES[self.topic][0] > float(received_value):
             self.send_alarm(
                 time_stamp
@@ -107,7 +113,17 @@ class Monitor:
                 + received_value
             )
 
-    # end if
+    # end def
+
+    # Method create measure JSON
+    def create_measure_json(self, received_value, time_stamp):
+        return {
+            "type of measure": self.topic,
+            "value": received_value,
+            "datetime": time_stamp
+        }
+
+    # end def
 
 
 # end class
