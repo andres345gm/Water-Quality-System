@@ -74,11 +74,19 @@ class Monitor:
         while True:
             self.health_check_publisher.send_string(self.topic)
             time.sleep(3)
-
+    '''
     # Method: Receive
     def receive(self):
         # While the program is running, receive messages
         while True:
+            healthCheckMessage = self.health_check_subscriber.recv_multipart()
+            newMonitors = healthCheckMessage[1].decode()
+            if newMonitors != "":
+                print("Se ha detectado que los monitores: " + newMonitors + " están caidos")
+                #suscribirse a los nuevos monitores y a el mismo tambien
+                self.subscriber.setsockopt_string(zmq.SUBSCRIBE,  )
+            else:
+                self.subscriber.setsockopt_string(zmq.SUBSCRIBE, self.topic)
             message = self.subscriber.recv_multipart()
             received_value = message[1].decode()
             time_stamp = message[2].decode()
@@ -87,12 +95,50 @@ class Monitor:
             self.check_value(received_value, time_stamp)
             # performance_test(time_stamp)
 
-
-
-
         # end while
 
     # end def
+    '''
+    def receive(self):
+        # While the program is running, receive messages
+        while True:
+            # Recibir mensaje del health check
+            print("Esperando mensaje de health check")
+            health_check_message = self.health_check_subscriber.recv_multipart()
+            print("Mensaje recibido")
+            # Mirar cuantos objetos hay en el mensaje
+            print("Longitud del mensaje: " + str(len(health_check_message)))
+
+            if len(health_check_message) == 3:
+                print("Mensaje: " + str(health_check_message))
+                print("Mensaje 0: " + str(health_check_message[0].decode()))
+                print("Mensaje 1: " + str(health_check_message[1].decode()))
+                print("Mensaje 2: " + str(health_check_message[2].decode()))
+                new_monitors = health_check_message[1].decode()
+            # Verificar si no hay que suplir a nadie
+            #if new_monitors != "":
+                print(f"Se ha detectado que los monitores: {new_monitors} están caídos")
+            
+                # Suscribirse a los nuevos monitores y al mismo también
+                topics_to_subscribe = new_monitors.split()
+                topics_to_subscribe.append(self.topic)
+                
+                self.subscriber.setsockopt_string(zmq.SUBSCRIBE, " ".join(topics_to_subscribe))
+            else:
+                print("la longitud del mensaje no es 3")
+                print("Mensaje: " + str(health_check_message))
+                #self.subscriber.setsockopt_string(zmq.SUBSCRIBE, self.topic)
+            
+            print("Esperando mensaje del sensor")
+            message = self.subscriber.recv_multipart()
+            print("Mensaje recibido del sensor")
+            received_value = message[1].decode()
+            time_stamp = message[2].decode()
+            print(time_stamp, ": ", received_value)
+            
+            # Check if the received value is within the limits
+            self.check_value(received_value, time_stamp)
+
 
     # Method: Quality control
 
@@ -185,6 +231,10 @@ def main():
     except KeyboardInterrupt:
         monitor.subscriber.close()
         monitor.context.term()
+        monitor.health_check_subscriber.close()
+        monitor.health_check_publisher.close()
+        monitor.context.term()
+
     # end try
 
 
