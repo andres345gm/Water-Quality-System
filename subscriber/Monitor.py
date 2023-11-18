@@ -2,8 +2,10 @@ import argparse
 from datetime import datetime
 
 import zmq
+import time
 
 from MeasureService import MeasureService
+import threading
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -17,6 +19,8 @@ PORT_PROXY = "5555"
 IP_ADDRESS_QUALITY_SYSTEM = "127.0.0.1"
 PORT_QUALITY_SYSTEM = "7777"
 
+IP_ADDRESS_HEALTH_CHECK = "127.0.0.1"
+PORT_HEALTH_CHECK = "8888"
 
 # end Global Values
 
@@ -50,10 +54,26 @@ class Monitor:
         self.publisher.connect(
             f"tcp://{IP_ADDRESS_QUALITY_SYSTEM}:{PORT_QUALITY_SYSTEM}"
         )
+
+        self.health_check_publisher = self.context.socket(zmq.PUB)
+        self.health_check_publisher.connect(f"tcp://{IP_ADDRESS_HEALTH_CHECK}:{PORT_HEALTH_CHECK}")
+        self.health_check_subscriber = self.context.socket(zmq.SUB)
+        self.health_check_subscriber.bind(f"tcp://{IP_ADDRESS_HEALTH_CHECK}:{PORT_HEALTH_CHECK}")
+        self.health_check_subscriber.setsockopt_string(zmq.SUBSCRIBE, topic)
+
         self.measure_service = MeasureService()
         print(topic + " monitor running...")
+        # Iniciar el subproceso para publicar el topic
+        topic_publisher_thread = threading.Thread(target=self.publish_topic)
+        topic_publisher_thread.daemon = True
+        topic_publisher_thread.start()
 
     # end def
+
+    def publish_topic(self):
+        while True:
+            self.health_check_publisher.send_string(self.topic)
+            time.sleep(3)
 
     # Method: Receive
     def receive(self):
@@ -66,6 +86,9 @@ class Monitor:
             # Check if the received value is within the limits
             self.check_value(received_value, time_stamp)
             # performance_test(time_stamp)
+
+
+
 
         # end while
 
