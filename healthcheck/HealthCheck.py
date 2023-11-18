@@ -11,8 +11,6 @@ class HealthCheck:
         self.subscriber = self.context.socket(zmq.SUB)
         self.subscriber.bind(f"tcp://{IP_ADDRESS_MONITOR}:{PORT_MONITOR}")
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, "")
-        self.publisher = self.context.socket(zmq.PUB)
-        self.publisher.connect(f"tcp://{IP_ADDRESS_MONITOR}:{PORT_MONITOR}")
 
 
         # Inicializa contadores para cada tipo de mensaje

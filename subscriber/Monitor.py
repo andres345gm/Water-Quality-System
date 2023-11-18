@@ -57,9 +57,6 @@ class Monitor:
 
         self.health_check_publisher = self.context.socket(zmq.PUB)
         self.health_check_publisher.connect(f"tcp://{IP_ADDRESS_HEALTH_CHECK}:{PORT_HEALTH_CHECK}")
-        self.health_check_subscriber = self.context.socket(zmq.SUB)
-        self.health_check_subscriber.bind(f"tcp://{IP_ADDRESS_HEALTH_CHECK}:{PORT_HEALTH_CHECK}")
-        self.health_check_subscriber.setsockopt_string(zmq.SUBSCRIBE, topic)
 
         self.measure_service = MeasureService()
         print(topic + " monitor running...")
@@ -72,6 +69,7 @@ class Monitor:
 
     def publish_topic(self):
         while True:
+            print("Sending health check message")
             self.health_check_publisher.send_string(self.topic)
             time.sleep(3)
 
