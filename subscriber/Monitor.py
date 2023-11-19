@@ -41,6 +41,8 @@ class Monitor:
         self.context = zmq.Context()
         self.subscriber = self.context.socket(zmq.SUB)
         self.topic = topic
+        self.subscribed = set()
+        self.subscribe = set()
         self.subscriber.connect(f"tcp://{IP_ADDRESS_PROXY}:{PORT_PROXY}")
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, topic)
         self.subscriber.setsockopt(zmq.RCVTIMEO,1000)  # Configura un tiempo de espera de 1000 ms (1 segundo)
@@ -66,6 +68,7 @@ class Monitor:
         topic_publisher_thread = threading.Thread(target=self.publish_topic)
         topic_publisher_thread.daemon = True
         topic_publisher_thread.start()
+        
 
     # end def
 
@@ -87,23 +90,32 @@ class Monitor:
             try:
                 health_check_message = self.health_check_subscriber.recv_multipart()
             except zmq.error.Again:
-                print("No llegó ningún mensaje en el tiempo de espera")
+                pass
             else:
-                print("El mensaje recibido del heath check fue", health_check_message)
                 fall_monitors = health_check_message[1].decode()
                 if fall_monitors != 'set()':
-                    #Suscribirse adicionalmente a los monitores caidos
-                    self.subscriber.setsockopt_string(zmq.SUBSCRIBE, ",".join(fall_monitors))
+                    fall_monitors = fall_monitors.replace("{", "").replace("}", "").replace("'", "").split(", ")
+                    # Crear una copia del conjunto
+                    subscribed_copy = self.subscribed.copy()
+                    for monitor in subscribed_copy:
+                        if monitor not in fall_monitors:
+                            self.subscriber.setsockopt_string(zmq.UNSUBSCRIBE, monitor)
+                            self.subscribed.remove(monitor)
+                    for monitor in fall_monitors:
+                        if monitor not in self.subscribed:
+                            self.subscriber.setsockopt_string(zmq.SUBSCRIBE, monitor)
+                            self.subscribed.add(monitor)
                 else:
-                    #Suscribirse al topic original
-                    self.subscriber.setsockopt_string(zmq.SUBSCRIBE, self.topic)
+                    # Suscribirse al tema original
+                    for monitor in self.subscribed:
+                        self.subscriber.setsockopt_string(zmq.UNSUBSCRIBE, monitor)
+
 
             try:
                 message = self.subscriber.recv_multipart()
-
             except zmq.error.Again:
                 # No llegó ningún mensaje en el tiempo de espera
-                print("No llegó ningún mensaje en el tiempo de espera")
+                pass
             else:
                 topic = message[0].decode()
                 received_value = message[1].decode()
