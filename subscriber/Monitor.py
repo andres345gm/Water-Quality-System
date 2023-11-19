@@ -32,32 +32,6 @@ PORT_HEALTH_CHECK_MONITOR = "8889"
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Método para encontrar un puerto disponible dentro de un rango
-def find_available_port(start, end):
-    for port in range(start, end + 1):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(1)
-        result = sock.connect_ex(('127.0.0.1', port))
-        sock.close()
-        if result != 0:
-            return port
-    return None
-
-
-# Seleccionar dinámicamente el puerto para HEALTH_CHECK_MONITOR
-PORT_RANGE_START = 8889
-PORT_RANGE_END = 8900
-selected_port = find_available_port(PORT_RANGE_START, PORT_RANGE_END)
-
-if selected_port is not None:
-    PORT_HEALTH_CHECK_MONITOR = str(selected_port)
-    print(f"Selected port for HEALTH_CHECK_MONITOR: {PORT_HEALTH_CHECK_MONITOR}")
-else:
-    print("No hay puertos disponibles en el rango especificado.")
-
-# end def
-
-
 # Monitor
 class Monitor:
 
@@ -69,6 +43,8 @@ class Monitor:
         self.topic = topic
         self.subscriber.connect(f"tcp://{IP_ADDRESS_PROXY}:{PORT_PROXY}")
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, topic)
+        self.subscriber.setsockopt(zmq.RCVTIMEO,1000)  # Configura un tiempo de espera de 1000 ms (1 segundo)
+
         # Initialize publisher socket
         self.publisher = self.context.socket(zmq.PUB)
         self.publisher.connect(
@@ -83,10 +59,10 @@ class Monitor:
         self.health_check_publisher.connect(f"tcp://{IP_ADDRESS_HEALTH_CHECK}:{PORT_HEALTH_CHECK}")
 
         self.health_check_subscriber = self.context.socket(zmq.SUB)
-        self.health_check_subscriber.bind(f"tcp://{IP_ADDRESS_HEALTH_CHECK_MONITOR}:{PORT_HEALTH_CHECK_MONITOR}")
+        self.health_check_subscriber.connect(f"tcp://{IP_ADDRESS_HEALTH_CHECK_MONITOR}:{PORT_HEALTH_CHECK_MONITOR}")
         self.health_check_subscriber.setsockopt_string(zmq.SUBSCRIBE, topic)
         self.health_check_subscriber.setsockopt(zmq.RCVTIMEO,
-                                                2000)  # Configura un tiempo de espera de 1000 ms (1 segundo)
+                                                1000)  # Configura un tiempo de espera de 1000 ms (1 segundo)
 
         self.measure_service = MeasureService()
         print(topic + " monitor running...")
@@ -115,50 +91,35 @@ class Monitor:
             try:
                 health_check_message = self.health_check_subscriber.recv_multipart()
             except zmq.error.Again:
-                # No llegó ningún mensaje en el tiempo de espera
-                print("No se recibió ningún mensaje de health check en el tiempo de espera.")
+                print("No llegó ningún mensaje en el tiempo de espera")
             else:
                 print("El mensaje recibido del heath check fue", health_check_message)
-            '''# Recibir mensaje del health check
-            print("Esperando mensaje de health check")
-            health_check_message = self.health_check_subscriber.recv_multipart()
-            print("Mensaje recibido")
-            # Mirar cuantos objetos hay en el mensaje
-            print("Longitud del mensaje: " + str(len(health_check_message)))
+                fall_monitors = health_check_message[1].decode()
+                if fall_monitors != 'set()':
+                    #Suscribirse adicionalmente a los monitores caidos
+                    self.subscriber.setsockopt_string(zmq.SUBSCRIBE, ",".join(fall_monitors))
+                else:
+                    #Suscribirse al topic original
+                    self.subscriber.setsockopt_string(zmq.SUBSCRIBE, self.topic)
 
-            if len(health_check_message) == 3:
-                print("Mensaje: " + str(health_check_message))
-                print("Mensaje 0: " + str(health_check_message[0].decode()))
-                print("Mensaje 1: " + str(health_check_message[1].decode()))
-                print("Mensaje 2: " + str(health_check_message[2].decode()))
-                new_monitors = health_check_message[1].decode()
-            # Verificar si no hay que suplir a nadie
-            #if new_monitors != "":
-                print(f"Se ha detectado que los monitores: {new_monitors} están caídos")
+            try:
+                message = self.subscriber.recv_multipart()
 
-                # Suscribirse a los nuevos monitores y al mismo también
-                topics_to_subscribe = new_monitors.split()
-                topics_to_subscribe.append(self.topic)
-
-                self.subscriber.setsockopt_string(zmq.SUBSCRIBE, " ".join(topics_to_subscribe))
+            except zmq.error.Again:
+                # No llegó ningún mensaje en el tiempo de espera
+                print("No llegó ningún mensaje en el tiempo de espera")
             else:
-                print("la longitud del mensaje no es 3")
-                print("Mensaje: " + str(health_check_message))
-                #self.subscriber.setsockopt_string(zmq.SUBSCRIBE, self.topic)'''
+                topic = message[0].decode()
+                received_value = message[1].decode()
+                time_stamp = message[2].decode()
 
-            # self.subscriber.setsockopt_string(zmq.SUBSCRIBE, self.topic)
+                self.values.append(received_value)
+                self.times.append(time.monotonic_ns() / 1_000_000_000)
+                
+                print(topic,"=>",time_stamp, ": ", received_value)
+                # Check if the received value is within the limits
+                self.check_value(topic, received_value, time_stamp)
 
-            message = self.subscriber.recv_multipart()
-            received_value = message[1].decode()
-            time_stamp = message[2].decode()
-
-            self.values.append(received_value)
-            self.times.append(time.monotonic_ns() / 1_000_000_000)
-
-            print(time_stamp, ": ", received_value)
-
-            # Check if the received value is within the limits
-            self.check_value(received_value, time_stamp)
 
     # Method: Quality control
 
@@ -174,30 +135,30 @@ class Monitor:
     # end def
 
     # Method: Check value
-    def check_value(self, received_value, time_stamp):
+    def check_value(self, topic, received_value, time_stamp):
         # Check if the received value is within the limits
         if float(received_value) < 0:
             return
 
-        self.measure_service.insert_measure(self.create_measure_json(received_value, time_stamp))
+        self.measure_service.insert_measure(self.create_measure_json(topic, received_value, time_stamp))
 
-        if LIMIT_VALUES[self.topic][0] > float(received_value):
+        if LIMIT_VALUES[topic][0] > float(received_value):
             self.send_alarm(
                 time_stamp
                 + ": "
-                + self.topic
+                + topic
                 + " is too low, the current "
-                + self.topic
+                + topic
                 + " is: "
                 + received_value
             )
-        elif LIMIT_VALUES[self.topic][1] < float(received_value):
+        elif LIMIT_VALUES[topic][1] < float(received_value):
             self.send_alarm(
                 time_stamp
                 + ": "
-                + self.topic
+                + topic
                 + " is too high, the current "
-                + self.topic
+                + topic
                 + " is: "
                 + received_value
             )
@@ -205,9 +166,9 @@ class Monitor:
     # end def
 
     # Method create measure JSON
-    def create_measure_json(self, received_value, time_stamp):
+    def create_measure_json(self, topic, received_value, time_stamp):
         return {
-            "type of measure": self.topic,
+            "type of measure": topic,
             "value": received_value,
             "datetime": time_stamp
         }
