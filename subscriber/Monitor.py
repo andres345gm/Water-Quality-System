@@ -75,6 +75,10 @@ class Monitor:
             f"tcp://{IP_ADDRESS_QUALITY_SYSTEM}:{PORT_QUALITY_SYSTEM}"
         )
 
+        # TESTING
+        self.times = []
+        self.values = []
+
         self.health_check_publisher = self.context.socket(zmq.PUB)
         self.health_check_publisher.connect(f"tcp://{IP_ADDRESS_HEALTH_CHECK}:{PORT_HEALTH_CHECK}")
 
@@ -147,6 +151,10 @@ class Monitor:
             message = self.subscriber.recv_multipart()
             received_value = message[1].decode()
             time_stamp = message[2].decode()
+
+            self.values.append(received_value)
+            self.times.append(time.monotonic_ns() / 1_000_000_000)
+
             print(time_stamp, ": ", received_value)
 
             # Check if the received value is within the limits

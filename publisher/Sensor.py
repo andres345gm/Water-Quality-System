@@ -34,6 +34,10 @@ class Sensor:
         self.interval = interval
         self.probability = probability
 
+        # TESTING
+        self.times = []
+        self.values = []
+
         # Initialize ZeroMQ context and publisher socket
         self.context = zmq.Context()
         self.publisher = self.context.socket(zmq.PUB)
@@ -72,6 +76,11 @@ class Sensor:
             value = self.generate_random_value()
             current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             # Send the data as a multipart message
+
+            # Testing
+            self.values.append(value)
+            self.times.append(time.monotonic_ns() / 1_000_000_000)
+
             self.publisher.send_multipart([self.topic.encode("UTF-8"),
                                            value.encode("UTF-8"),
                                            current_time.encode("UTF-8")])
