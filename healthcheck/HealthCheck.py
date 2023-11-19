@@ -3,6 +3,8 @@ import time
 
 IP_ADDRESS_MONITOR = "127.0.0.1"
 PORT_MONITOR = "8888"  # Puerto utilizado para los controles de salud
+
+IP_ADDRESS_MONITOR_HEALTH_CHECK = "127.0.0.1"
 PORT_MONITOR_HEALTH_CHECK = "8889"  # Puerto utilizado para los controles de salud
 HEALTH_CHECK_TIMEOUT = 5   # Tiempo de espera para considerar que un monitor está inactivo (5 segundos)
 
