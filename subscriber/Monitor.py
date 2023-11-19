@@ -102,7 +102,6 @@ class Monitor:
 
     def publish_topic(self):
         while True:
-            print("Enviando mensaje de health check")
             self.health_check_publisher.send_string(self.topic)
             time.sleep(1)
 
@@ -116,7 +115,6 @@ class Monitor:
                 print("No se recibió ningún mensaje de health check en el tiempo de espera.")
             else:
                 print("El mensaje recibido del heath check fue", health_check_message)
-                print("La parte que nos interesa es ", health_check_message[1].decode())
             '''# Recibir mensaje del health check
             print("Esperando mensaje de health check")
             health_check_message = self.health_check_subscriber.recv_multipart()
@@ -146,9 +144,7 @@ class Monitor:
 
             # self.subscriber.setsockopt_string(zmq.SUBSCRIBE, self.topic)
 
-            print("Esperando mensaje del sensor")
             message = self.subscriber.recv_multipart()
-            print("Mensaje recibido del sensor")
             received_value = message[1].decode()
             time_stamp = message[2].decode()
             print(time_stamp, ": ", received_value)

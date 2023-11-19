@@ -7,7 +7,8 @@ class MeasureRepository:
 
     # Method: Constructor
     def __init__(self):
-        self.uri = "mongodb+srv://andres345gm:UjFZq4tQgCJHCQ4U@waterqualitysystem.q1xr99q.mongodb.net/?retryWrites=true&w=majority"
+        self.uri = "mongodb+srv://andres345gm:UjFZq4tQgCJHCQ4U@waterqualitysystem.q1xr99q.mongodb.net/?retryWrites=true&w=majority&tlsAllowInvalidCertificates=true"
+        #self.uri = "mongodb+srv://andres345gm:UjFZq4tQgCJHCQ4U@waterqualitysystem.q1xr99q.mongodb.net/?retryWrites=true&w=majority"
         self.client = MongoClient(self.uri, server_api=ServerApi('1'))
         self.db = self.client["water-measures"]
         self.collection = self.db["measures"]
