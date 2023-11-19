@@ -22,13 +22,14 @@ PORT_QUALITY_SYSTEM = "7777"
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-
+"""
 # Function: Performance Test
 def performance_test(time_stamp):
     source_message_time = datetime.strptime(time_stamp, "%Y-%m-%d %H:%M:%S")
     current_time = datetime.now()
     time_delta = current_time - source_message_time
     print(f"The time from occurrence to storage of the measurement is: {time_delta}")
+"""
 
 
 # end def
