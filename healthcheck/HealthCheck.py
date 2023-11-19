@@ -21,49 +21,37 @@ class HealthCheck:
         # Inicializa contadores para cada tipo de mensaje
         self.message_counters = {
             "temperature": 0,
-            "Ph": 0,
+            "PH": 0,
             "oxygen": 0
         }
         # Monitores caidos
         self.fall_monitors = set()
-        self.all_monitors = set(["temperature", "Ph", "oxygen"])
+        self.all_monitors = set(["temperature", "PH", "oxygen"])
         self.supplier = None
         print("Health Check running...")
 
+    def choose_supplier(self):
+        if "temperature" not in self.fall_monitors:
+            self.supplier = "temperature"
+        elif "PH" not in self.fall_monitors:
+            self.supplier = "PH"
+        elif "oxygen" not in self.fall_monitors:
+            self.supplier = "oxygen"
 
     def notify_supplier(self):
         #Verificar si aun no tenemos un monitor que supla a otros
-        if self.supplier is None:
-            print("No hay un monitor asignado para suplir a los monitores caidos")
-            if "temperature" not in self.fall_monitors:
-                self.supplier = "temperature"
-            elif "Ph" not in self.fall_monitors:
-                self.supplier = "Ph"
-            elif "oxygen" not in self.fall_monitors:
-                self.supplier = "oxygen"
-            #Verificar que haya un monitor disponible para suplir
-            print("Eligiendo el monitor para suplir los monitores caidos")
-            if self.supplier is not None:
-                print("El monitor asignado para suplir es: ", self.supplier)
-                print("Enviando mensaje al monitor para suplir a los monitores caidos")
-                print("los monitores caidos son", self.fall_monitors)
-                self.publisher.send_multipart([self.supplier.encode(),
-                                                str(self.fall_monitors).encode()])
-            else:
-                print("No hay monitores disponibles para poder suplir la operación")
+        if self.supplier is None or self.supplier in self.fall_monitors:
+            self.choose_supplier()
+
+        if self.supplier is not None:
+            print("El monitor que suplira a los monitores caidos es", self.supplier)
+            print("Enviando mensaje al monitor para suplir a los monitores caidos")
+            print("los monitores caidos son", self.fall_monitors)
+            # Notificar al monitor que debe suplir o seguir supliendo a los monitores caidos
+            self.publisher.send_multipart([self.supplier.encode(),
+                                            str(self.fall_monitors).encode()])
         else:
-            print("El monitor asignado para suplir es: ", self.supplier)
-            # Verificar si el monitor que estaba supliendo ya no está caido
-            if self.supplier in self.fall_monitors:
-                print("El monitor asignado se cayó, debemos elegir un nuevo monitor")
-                self.supplier = None
-                self.notify_supplier()
-            else:
-                print("Enviando mensaje al monitor para suplir a los monitores caidos")
-                print("los monitores caidos son", self.fall_monitors)
-                # Notificar al monitor que debe suplir o seguir supliendo a los monitores caidos
-                self.publisher.send_multipart([self.supplier.encode(),
-                                                str(self.fall_monitors).encode()])
+            print("No hay monitores disponibles para suplir la operación")
 
         
     def receive(self):
@@ -72,7 +60,7 @@ class HealthCheck:
 
         while True:
             message = self.subscriber.recv_string()
-            print("el mensaje es ", message)
+            print(message)
             # Actualiza el contador para el tipo de mensaje recibido
             message_type = message.split(":")[0].strip()
             if message_type in self.message_counters:
@@ -83,20 +71,21 @@ class HealthCheck:
             # Verifica si han pasado 5 segundos y resetea los contadores
             current_time = time.time()
             for monitor, last_time in last_message_time.items():
+                previous_monitors_fall = list(self.fall_monitors)
                 if current_time - last_time >= HEALTH_CHECK_TIMEOUT:
                     print(f"Advertencia: No se recibieron mensajes de tipo {monitor} en {HEALTH_CHECK_TIMEOUT} segundos.")
-                    print("los monitores caidos son", self.fall_monitors)
                     self.fall_monitors.add(monitor)
-                    print("los monitores caidos son", self.fall_monitors)
                     # Notificar al monitor asignado que debe suplir al monitor caído
-                    self.notify_supplier()
-                else:
-                    '''monitor in self.message_counters and self.message_counters[monitor] > 0'''
+                elif monitor in self.message_counters and self.message_counters[monitor] > 0:
+                    #monitor in self.message_counters and self.message_counters[monitor] > 0
                     # Si se recibieron mensajes, quitar el monitor caído de la lista
                     if monitor in self.fall_monitors:
-                        print(f"Enviando mensaje al monitor para dejar de suplir {monitor}")
+                        print(f"El monitor {monitor} ahora está activo.")
                         self.fall_monitors.remove(monitor)
-                        self.notify_supplier()
+                if previous_monitors_fall != list(self.fall_monitors):
+                    print("Los monitores caidos han cambiado")
+                    # Notificar al monitor asignado que debe suplir al monitor caído
+                    self.notify_supplier()
 
 
 

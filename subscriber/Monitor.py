@@ -69,6 +69,8 @@ class Monitor:
         self.topic = topic
         self.subscriber.connect(f"tcp://{IP_ADDRESS_PROXY}:{PORT_PROXY}")
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, topic)
+        self.subscriber.setsockopt(zmq.RCVTIMEO,1000)  # Configura un tiempo de espera de 1000 ms (1 segundo)
+
         # Initialize publisher socket
         self.publisher = self.context.socket(zmq.PUB)
         self.publisher.connect(
@@ -82,7 +84,7 @@ class Monitor:
         self.health_check_subscriber.bind(f"tcp://{IP_ADDRESS_HEALTH_CHECK_MONITOR}:{PORT_HEALTH_CHECK_MONITOR}")
         self.health_check_subscriber.setsockopt_string(zmq.SUBSCRIBE, topic)
         self.health_check_subscriber.setsockopt(zmq.RCVTIMEO,
-                                                2000)  # Configura un tiempo de espera de 1000 ms (1 segundo)
+                                                1000)  # Configura un tiempo de espera de 1000 ms (1 segundo)
 
         self.measure_service = MeasureService()
         print(topic + " monitor running...")
@@ -112,45 +114,31 @@ class Monitor:
                 health_check_message = self.health_check_subscriber.recv_multipart()
             except zmq.error.Again:
                 # No llegó ningún mensaje en el tiempo de espera
-                print("No se recibió ningún mensaje de health check en el tiempo de espera.")
+                pass
             else:
                 print("El mensaje recibido del heath check fue", health_check_message)
-            '''# Recibir mensaje del health check
-            print("Esperando mensaje de health check")
-            health_check_message = self.health_check_subscriber.recv_multipart()
-            print("Mensaje recibido")
-            # Mirar cuantos objetos hay en el mensaje
-            print("Longitud del mensaje: " + str(len(health_check_message)))
+                fall_monitors = health_check_message[1].decode()
+                if fall_monitors != 'set()':
+                    #Suscribirse adicionalmente a los monitores caidos
+                    self.subscriber.setsockopt_string(zmq.SUBSCRIBE, ",".join(fall_monitors))
+                else:
+                    #Suscribirse al topic original
+                    self.subscriber.setsockopt_string(zmq.SUBSCRIBE, self.topic)
 
-            if len(health_check_message) == 3:
-                print("Mensaje: " + str(health_check_message))
-                print("Mensaje 0: " + str(health_check_message[0].decode()))
-                print("Mensaje 1: " + str(health_check_message[1].decode()))
-                print("Mensaje 2: " + str(health_check_message[2].decode()))
-                new_monitors = health_check_message[1].decode()
-            # Verificar si no hay que suplir a nadie
-            #if new_monitors != "":
-                print(f"Se ha detectado que los monitores: {new_monitors} están caídos")
+            try:
+                message = self.subscriber.recv_multipart()
 
-                # Suscribirse a los nuevos monitores y al mismo también
-                topics_to_subscribe = new_monitors.split()
-                topics_to_subscribe.append(self.topic)
-
-                self.subscriber.setsockopt_string(zmq.SUBSCRIBE, " ".join(topics_to_subscribe))
+            except zmq.error.Again:
+                # No llegó ningún mensaje en el tiempo de espera
+                pass
             else:
-                print("la longitud del mensaje no es 3")
-                print("Mensaje: " + str(health_check_message))
-                #self.subscriber.setsockopt_string(zmq.SUBSCRIBE, self.topic)'''
+                topic = message[0].decode()
+                received_value = message[1].decode()
+                time_stamp = message[2].decode()
+                print(topic,"=>",time_stamp, ": ", received_value)
+                # Check if the received value is within the limits
+                self.check_value(received_value, time_stamp)
 
-            # self.subscriber.setsockopt_string(zmq.SUBSCRIBE, self.topic)
-
-            message = self.subscriber.recv_multipart()
-            received_value = message[1].decode()
-            time_stamp = message[2].decode()
-            print(time_stamp, ": ", received_value)
-
-            # Check if the received value is within the limits
-            self.check_value(received_value, time_stamp)
 
     # Method: Quality control
 
