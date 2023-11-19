@@ -17,10 +17,15 @@ class Proxy:
             print("An error occurred:", str(e))
 
 
-proxy = Proxy("6666", "5555")
-try:
-    proxy.run()
-except KeyboardInterrupt:
-    proxy.frontend.close()
-    proxy.backend.close()
-    proxy.context.term()
+def main():
+    proxy = Proxy("6666", "5555")
+    try:
+        proxy.run()
+    except KeyboardInterrupt:
+        proxy.frontend.close()
+        proxy.backend.close()
+        proxy.context.term()
+
+
+if __name__ == "__main__":
+    main()
