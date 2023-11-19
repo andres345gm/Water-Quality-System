@@ -61,7 +61,7 @@ class Monitor:
 
         self.health_check_publisher = self.context.socket(zmq.PUB)
         self.health_check_publisher.connect(f"tcp://{IP_ADDRESS_HEALTH_CHECK}:{PORT_HEALTH_CHECK}")
-        
+
         self.health_check_subscriber = self.context.socket(zmq.SUB)
         self.health_check_subscriber.bind(f"tcp://{IP_ADDRESS_HEALTH_CHECK_MONITOR}:{PORT_HEALTH_CHECK_MONITOR}")
         self.health_check_subscriber.setsockopt_string(zmq.SUBSCRIBE, topic)
@@ -123,24 +123,24 @@ class Monitor:
             # Verificar si no hay que suplir a nadie
             #if new_monitors != "":
                 print(f"Se ha detectado que los monitores: {new_monitors} están caídos")
-            
+
                 # Suscribirse a los nuevos monitores y al mismo también
                 topics_to_subscribe = new_monitors.split()
                 topics_to_subscribe.append(self.topic)
-                
+
                 self.subscriber.setsockopt_string(zmq.SUBSCRIBE, " ".join(topics_to_subscribe))
             else:
                 print("la longitud del mensaje no es 3")
                 print("Mensaje: " + str(health_check_message))
                 #self.subscriber.setsockopt_string(zmq.SUBSCRIBE, self.topic)
-            
+
             print("Esperando mensaje del sensor")
             message = self.subscriber.recv_multipart()
             print("Mensaje recibido del sensor")
             received_value = message[1].decode()
             time_stamp = message[2].decode()
             print(time_stamp, ": ", received_value)
-            
+
             # Check if the received value is within the limits
             self.check_value(received_value, time_stamp)
 
