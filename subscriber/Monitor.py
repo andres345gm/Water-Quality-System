@@ -2,6 +2,8 @@ import argparse
 from datetime import datetime
 
 import zmq
+import socket
+
 import time
 
 from MeasureService import MeasureService
@@ -28,6 +30,31 @@ PORT_HEALTH_CHECK_MONITOR = "8889"
 # end Global Values
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Método para encontrar un puerto disponible dentro de un rango
+def find_available_port(start, end):
+    for port in range(start, end + 1):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)
+        result = sock.connect_ex(('127.0.0.1', port))
+        sock.close()
+        if result != 0:
+            return port
+    return None
+
+# Seleccionar dinámicamente el puerto para HEALTH_CHECK_MONITOR
+PORT_RANGE_START = 8889
+PORT_RANGE_END = 8900
+selected_port = find_available_port(PORT_RANGE_START, PORT_RANGE_END)
+
+if selected_port is not None:
+    PORT_HEALTH_CHECK_MONITOR = str(selected_port)
+    print(f"Selected port for HEALTH_CHECK_MONITOR: {PORT_HEALTH_CHECK_MONITOR}")
+else:
+    print("No hay puertos disponibles en el rango especificado.")
+
+
+
 
 """
 # Function: Performance Test
@@ -65,6 +92,8 @@ class Monitor:
         self.health_check_subscriber = self.context.socket(zmq.SUB)
         self.health_check_subscriber.bind(f"tcp://{IP_ADDRESS_HEALTH_CHECK_MONITOR}:{PORT_HEALTH_CHECK_MONITOR}")
         self.health_check_subscriber.setsockopt_string(zmq.SUBSCRIBE, topic)
+        self.health_check_subscriber.setsockopt(zmq.RCVTIMEO, 2000)  # Configura un tiempo de espera de 1000 ms (1 segundo)
+
 
         self.measure_service = MeasureService()
         print(topic + " monitor running...")
@@ -75,39 +104,33 @@ class Monitor:
 
     # end def
 
+
+    def close_program(self):
+        self.subscriber.close()
+        self.publisher.close()
+        self.health_check_subscriber.unbind(f"tcp://{IP_ADDRESS_HEALTH_CHECK_MONITOR}:{PORT_HEALTH_CHECK_MONITOR}")
+        self.health_check_publisher.close()
+        self.context.term()
+
+
     def publish_topic(self):
         while True:
+            print("Enviando mensaje de health check")
             self.health_check_publisher.send_string(self.topic)
-            time.sleep(3)
-    '''
-    # Method: Receive
+            time.sleep(1)
+
     def receive(self):
         # While the program is running, receive messages
         while True:
-            healthCheckMessage = self.health_check_subscriber.recv_multipart()
-            newMonitors = healthCheckMessage[1].decode()
-            if newMonitors != "":
-                print("Se ha detectado que los monitores: " + newMonitors + " están caidos")
-                #suscribirse a los nuevos monitores y a el mismo tambien
-                self.subscriber.setsockopt_string(zmq.SUBSCRIBE,  )
+            try:
+                health_check_message = self.health_check_subscriber.recv_multipart()
+            except zmq.error.Again:
+                # No llegó ningún mensaje en el tiempo de espera
+                print("No se recibió ningún mensaje de health check en el tiempo de espera.")
             else:
-                self.subscriber.setsockopt_string(zmq.SUBSCRIBE, self.topic)
-            message = self.subscriber.recv_multipart()
-            received_value = message[1].decode()
-            time_stamp = message[2].decode()
-            print(time_stamp, ": ", received_value)
-            # Check if the received value is within the limits
-            self.check_value(received_value, time_stamp)
-            # performance_test(time_stamp)
-
-        # end while
-
-    # end def
-    '''
-    def receive(self):
-        # While the program is running, receive messages
-        while True:
-            # Recibir mensaje del health check
+                print("El mensaje recibido del heath check fue", health_check_message)
+                print("La parte que nos interesa es ", health_check_message[1].decode())
+            '''# Recibir mensaje del health check
             print("Esperando mensaje de health check")
             health_check_message = self.health_check_subscriber.recv_multipart()
             print("Mensaje recibido")
@@ -132,6 +155,8 @@ class Monitor:
             else:
                 print("la longitud del mensaje no es 3")
                 print("Mensaje: " + str(health_check_message))
+                #self.subscriber.setsockopt_string(zmq.SUBSCRIBE, self.topic)'''
+            
                 #self.subscriber.setsockopt_string(zmq.SUBSCRIBE, self.topic)
 
             print("Esperando mensaje del sensor")
@@ -143,6 +168,7 @@ class Monitor:
 
             # Check if the received value is within the limits
             self.check_value(received_value, time_stamp)
+
 
 
     # Method: Quality control
@@ -231,6 +257,7 @@ def main():
     args = validate_arguments()
     # Create a monitor object and receive messages
     monitor = Monitor(args.type)
+    time.sleep(5)
     try:
         monitor.receive()
     except KeyboardInterrupt:
