@@ -32,32 +32,6 @@ PORT_HEALTH_CHECK_MONITOR = "8889"
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Método para encontrar un puerto disponible dentro de un rango
-def find_available_port(start, end):
-    for port in range(start, end + 1):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(1)
-        result = sock.connect_ex(('127.0.0.1', port))
-        sock.close()
-        if result != 0:
-            return port
-    return None
-
-
-# Seleccionar dinámicamente el puerto para HEALTH_CHECK_MONITOR
-PORT_RANGE_START = 8889
-PORT_RANGE_END = 8900
-selected_port = find_available_port(PORT_RANGE_START, PORT_RANGE_END)
-
-if selected_port is not None:
-    PORT_HEALTH_CHECK_MONITOR = str(selected_port)
-    print(f"Selected port for HEALTH_CHECK_MONITOR: {PORT_HEALTH_CHECK_MONITOR}")
-else:
-    print("No hay puertos disponibles en el rango especificado.")
-
-# end def
-
-
 # Monitor
 class Monitor:
 
@@ -81,7 +55,7 @@ class Monitor:
         self.health_check_publisher.connect(f"tcp://{IP_ADDRESS_HEALTH_CHECK}:{PORT_HEALTH_CHECK}")
 
         self.health_check_subscriber = self.context.socket(zmq.SUB)
-        self.health_check_subscriber.bind(f"tcp://{IP_ADDRESS_HEALTH_CHECK_MONITOR}:{PORT_HEALTH_CHECK_MONITOR}")
+        self.health_check_subscriber.connect(f"tcp://{IP_ADDRESS_HEALTH_CHECK_MONITOR}:{PORT_HEALTH_CHECK_MONITOR}")
         self.health_check_subscriber.setsockopt_string(zmq.SUBSCRIBE, topic)
         self.health_check_subscriber.setsockopt(zmq.RCVTIMEO,
                                                 1000)  # Configura un tiempo de espera de 1000 ms (1 segundo)
@@ -113,8 +87,7 @@ class Monitor:
             try:
                 health_check_message = self.health_check_subscriber.recv_multipart()
             except zmq.error.Again:
-                # No llegó ningún mensaje en el tiempo de espera
-                pass
+                print("No llegó ningún mensaje en el tiempo de espera")
             else:
                 print("El mensaje recibido del heath check fue", health_check_message)
                 fall_monitors = health_check_message[1].decode()
@@ -130,14 +103,14 @@ class Monitor:
 
             except zmq.error.Again:
                 # No llegó ningún mensaje en el tiempo de espera
-                pass
+                print("No llegó ningún mensaje en el tiempo de espera")
             else:
                 topic = message[0].decode()
                 received_value = message[1].decode()
                 time_stamp = message[2].decode()
                 print(topic,"=>",time_stamp, ": ", received_value)
                 # Check if the received value is within the limits
-                self.check_value(received_value, time_stamp)
+                self.check_value(topic, received_value, time_stamp)
 
 
     # Method: Quality control
@@ -154,30 +127,30 @@ class Monitor:
     # end def
 
     # Method: Check value
-    def check_value(self, received_value, time_stamp):
+    def check_value(self, topic, received_value, time_stamp):
         # Check if the received value is within the limits
         if float(received_value) < 0:
             return
 
-        self.measure_service.insert_measure(self.create_measure_json(received_value, time_stamp))
+        self.measure_service.insert_measure(self.create_measure_json(topic, received_value, time_stamp))
 
-        if LIMIT_VALUES[self.topic][0] > float(received_value):
+        if LIMIT_VALUES[topic][0] > float(received_value):
             self.send_alarm(
                 time_stamp
                 + ": "
-                + self.topic
+                + topic
                 + " is too low, the current "
-                + self.topic
+                + topic
                 + " is: "
                 + received_value
             )
-        elif LIMIT_VALUES[self.topic][1] < float(received_value):
+        elif LIMIT_VALUES[topic][1] < float(received_value):
             self.send_alarm(
                 time_stamp
                 + ": "
-                + self.topic
+                + topic
                 + " is too high, the current "
-                + self.topic
+                + topic
                 + " is: "
                 + received_value
             )
@@ -185,9 +158,9 @@ class Monitor:
     # end def
 
     # Method create measure JSON
-    def create_measure_json(self, received_value, time_stamp):
+    def create_measure_json(self, topic, received_value, time_stamp):
         return {
-            "type of measure": self.topic,
+            "type of measure": topic,
             "value": received_value,
             "datetime": time_stamp
         }

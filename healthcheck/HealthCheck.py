@@ -15,7 +15,7 @@ class HealthCheck:
         self.subscriber.bind(f"tcp://{IP_ADDRESS_MONITOR}:{PORT_MONITOR}")
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, "")
         self.publisher = self.context.socket(zmq.PUB)
-        self.publisher.connect(f"tcp://{IP_ADDRESS_MONITOR}:{PORT_MONITOR_HEALTH_CHECK}")
+        self.publisher.bind(f"tcp://{IP_ADDRESS_MONITOR}:{PORT_MONITOR_HEALTH_CHECK}")
 
 
         # Inicializa contadores para cada tipo de mensaje
@@ -77,7 +77,6 @@ class HealthCheck:
                     self.fall_monitors.add(monitor)
                     # Notificar al monitor asignado que debe suplir al monitor caído
                 elif monitor in self.message_counters and self.message_counters[monitor] > 0:
-                    #monitor in self.message_counters and self.message_counters[monitor] > 0
                     # Si se recibieron mensajes, quitar el monitor caído de la lista
                     if monitor in self.fall_monitors:
                         print(f"El monitor {monitor} ahora está activo.")
