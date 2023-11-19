@@ -2,8 +2,10 @@ import argparse
 from datetime import datetime
 
 import zmq
+import time
 
 from MeasureService import MeasureService
+import threading
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -17,6 +19,11 @@ PORT_PROXY = "5555"
 IP_ADDRESS_QUALITY_SYSTEM = "127.0.0.1"
 PORT_QUALITY_SYSTEM = "7777"
 
+IP_ADDRESS_HEALTH_CHECK = "127.0.0.1"
+PORT_HEALTH_CHECK = "8888"
+
+IP_ADDRESS_HEALTH_CHECK_MONITOR = "127.0.0.1"
+PORT_HEALTH_CHECK_MONITOR = "8889"
 
 # end Global Values
 
@@ -51,15 +58,40 @@ class Monitor:
         self.publisher.connect(
             f"tcp://{IP_ADDRESS_QUALITY_SYSTEM}:{PORT_QUALITY_SYSTEM}"
         )
+
+        self.health_check_publisher = self.context.socket(zmq.PUB)
+        self.health_check_publisher.connect(f"tcp://{IP_ADDRESS_HEALTH_CHECK}:{PORT_HEALTH_CHECK}")
+        
+        self.health_check_subscriber = self.context.socket(zmq.SUB)
+        self.health_check_subscriber.bind(f"tcp://{IP_ADDRESS_HEALTH_CHECK_MONITOR}:{PORT_HEALTH_CHECK_MONITOR}")
+        self.health_check_subscriber.setsockopt_string(zmq.SUBSCRIBE, topic)
+
         self.measure_service = MeasureService()
         print(topic + " monitor running...")
+        # Iniciar el subproceso para publicar el topic
+        topic_publisher_thread = threading.Thread(target=self.publish_topic)
+        topic_publisher_thread.daemon = True
+        topic_publisher_thread.start()
 
     # end def
 
+    def publish_topic(self):
+        while True:
+            self.health_check_publisher.send_string(self.topic)
+            time.sleep(3)
+    '''
     # Method: Receive
     def receive(self):
         # While the program is running, receive messages
         while True:
+            healthCheckMessage = self.health_check_subscriber.recv_multipart()
+            newMonitors = healthCheckMessage[1].decode()
+            if newMonitors != "":
+                print("Se ha detectado que los monitores: " + newMonitors + " están caidos")
+                #suscribirse a los nuevos monitores y a el mismo tambien
+                self.subscriber.setsockopt_string(zmq.SUBSCRIBE,  )
+            else:
+                self.subscriber.setsockopt_string(zmq.SUBSCRIBE, self.topic)
             message = self.subscriber.recv_multipart()
             received_value = message[1].decode()
             time_stamp = message[2].decode()
@@ -71,6 +103,47 @@ class Monitor:
         # end while
 
     # end def
+    '''
+    def receive(self):
+        # While the program is running, receive messages
+        while True:
+            # Recibir mensaje del health check
+            print("Esperando mensaje de health check")
+            health_check_message = self.health_check_subscriber.recv_multipart()
+            print("Mensaje recibido")
+            # Mirar cuantos objetos hay en el mensaje
+            print("Longitud del mensaje: " + str(len(health_check_message)))
+
+            if len(health_check_message) == 3:
+                print("Mensaje: " + str(health_check_message))
+                print("Mensaje 0: " + str(health_check_message[0].decode()))
+                print("Mensaje 1: " + str(health_check_message[1].decode()))
+                print("Mensaje 2: " + str(health_check_message[2].decode()))
+                new_monitors = health_check_message[1].decode()
+            # Verificar si no hay que suplir a nadie
+            #if new_monitors != "":
+                print(f"Se ha detectado que los monitores: {new_monitors} están caídos")
+            
+                # Suscribirse a los nuevos monitores y al mismo también
+                topics_to_subscribe = new_monitors.split()
+                topics_to_subscribe.append(self.topic)
+                
+                self.subscriber.setsockopt_string(zmq.SUBSCRIBE, " ".join(topics_to_subscribe))
+            else:
+                print("la longitud del mensaje no es 3")
+                print("Mensaje: " + str(health_check_message))
+                #self.subscriber.setsockopt_string(zmq.SUBSCRIBE, self.topic)
+            
+            print("Esperando mensaje del sensor")
+            message = self.subscriber.recv_multipart()
+            print("Mensaje recibido del sensor")
+            received_value = message[1].decode()
+            time_stamp = message[2].decode()
+            print(time_stamp, ": ", received_value)
+            
+            # Check if the received value is within the limits
+            self.check_value(received_value, time_stamp)
+
 
     # Method: Quality control
 
@@ -163,6 +236,10 @@ def main():
     except KeyboardInterrupt:
         monitor.subscriber.close()
         monitor.context.term()
+        monitor.health_check_subscriber.close()
+        monitor.health_check_publisher.close()
+        monitor.context.term()
+
     # end try
 
 
