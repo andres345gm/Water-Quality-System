@@ -3,6 +3,7 @@ import time
 
 IP_ADDRESS_MONITOR = "127.0.0.1"
 PORT_MONITOR = "8888"  # Puerto utilizado para los controles de salud
+PORT_MONITOR_HEALTH_CHECK = "8889"  # Puerto utilizado para los controles de salud
 HEALTH_CHECK_TIMEOUT = 5   # Tiempo de espera para considerar que un monitor está inactivo (5 segundos)
 
 class HealthCheck:
@@ -12,7 +13,7 @@ class HealthCheck:
         self.subscriber.bind(f"tcp://{IP_ADDRESS_MONITOR}:{PORT_MONITOR}")
         self.subscriber.setsockopt_string(zmq.SUBSCRIBE, "")
         self.publisher = self.context.socket(zmq.PUB)
-        self.publisher.connect(f"tcp://{IP_ADDRESS_MONITOR}:{PORT_MONITOR}")
+        self.publisher.connect(f"tcp://{IP_ADDRESS_MONITOR}:{PORT_MONITOR_HEALTH_CHECK}")
 
 
         # Inicializa contadores para cada tipo de mensaje

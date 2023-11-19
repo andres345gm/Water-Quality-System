@@ -22,6 +22,8 @@ PORT_QUALITY_SYSTEM = "7777"
 IP_ADDRESS_HEALTH_CHECK = "127.0.0.1"
 PORT_HEALTH_CHECK = "8888"
 
+PORT_HEALTH_CHECK_MONITOR = "8889"
+
 # end Global Values
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -58,7 +60,7 @@ class Monitor:
         self.health_check_publisher = self.context.socket(zmq.PUB)
         self.health_check_publisher.connect(f"tcp://{IP_ADDRESS_HEALTH_CHECK}:{PORT_HEALTH_CHECK}")
         self.health_check_subscriber = self.context.socket(zmq.SUB)
-        self.health_check_subscriber.bind(f"tcp://{IP_ADDRESS_HEALTH_CHECK}:{PORT_HEALTH_CHECK}")
+        self.health_check_subscriber.bind(f"tcp://{IP_ADDRESS_HEALTH_CHECK}:{PORT_HEALTH_CHECK_MONITOR}")
         self.health_check_subscriber.setsockopt_string(zmq.SUBSCRIBE, topic)
 
         self.measure_service = MeasureService()
