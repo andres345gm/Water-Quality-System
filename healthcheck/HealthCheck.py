@@ -73,8 +73,9 @@ class HealthCheck:
             for monitor, last_time in last_message_time.items():
                 previous_monitors_fall = list(self.fall_monitors)
                 if current_time - last_time >= HEALTH_CHECK_TIMEOUT:
-                    print(f"Advertencia: No se recibieron mensajes de tipo {monitor} en {HEALTH_CHECK_TIMEOUT} segundos.")
-                    self.fall_monitors.add(monitor)
+                    if monitor not in self.fall_monitors:
+                        print(f"Advertencia: No se recibieron mensajes de tipo {monitor} en {HEALTH_CHECK_TIMEOUT} segundos.")
+                        self.fall_monitors.add(monitor)
                     # Notificar al monitor asignado que debe suplir al monitor caído
                 elif monitor in self.message_counters and self.message_counters[monitor] > 0:
                     # Si se recibieron mensajes, quitar el monitor caído de la lista
