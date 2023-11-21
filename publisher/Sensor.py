@@ -6,6 +6,39 @@ import sys
 import argparse
 import json
 
+import ntplib
+from time import ctime
+import datetime
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Class NTPServer
+class NTPServer:
+
+    # Method: Constructor
+    def __init__(self):
+        self.ntp_server = 'pool.ntp.org'
+        self.clientNTP = ntplib.NTPClient()
+
+    # end def
+
+    # Method: Insert measure into database
+    def obtain_real_time(self):
+        try:
+            # Query NTP Server
+            response = self.clientNTP.request(self.ntp_server)
+
+            # Returns time
+            return datetime.datetime.fromtimestamp(response.tx_time)
+
+        except Exception as e:
+            # Error
+            return datetime.datetime(year=1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    # end def
+
+# end class
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Global Values
@@ -19,6 +52,7 @@ LIMIT_VALUES = {
     'oxygen': (2.0, 11.0)
 }
 
+NTPServer = NTPServer()
 
 # end Global Values
 
@@ -34,9 +68,10 @@ class Sensor:
         self.interval = interval
         self.probability = probability
 
-        # TESTING
-        self.times = []
+        # Testing
         self.values = []
+        self.send_times = []
+        self.arrival_times = []
 
         # Initialize ZeroMQ context and publisher socket
         self.context = zmq.Context()
@@ -74,12 +109,8 @@ class Sensor:
         try:
             # Generate a random value and current time
             value = self.generate_random_value()
-            current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            current_time = NTPServer.obtain_real_time().strftime("%Y-%m-%d %H:%M:%S.%f")
             # Send the data as a multipart message
-
-            # Testing
-            self.values.append(value)
-            self.times.append(time.monotonic_ns() / 1_000_000_000)
 
             self.publisher.send_multipart([self.topic.encode("UTF-8"),
                                            value.encode("UTF-8"),
